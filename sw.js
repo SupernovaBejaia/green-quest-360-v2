@@ -1,10 +1,13 @@
 // Service worker : met l'application en cache pour qu'elle s'ouvre et fonctionne sans Internet.
 // Changer VERSION à chaque mise en ligne pour que les téléphones récupèrent la nouvelle version.
-const VERSION = 'gq360-v3';
+// Les caches sont partagés avec la V1 (même domaine github.io) : on ne touche qu'aux caches V2.
+importScripts('js/upload-core.js');
+const PREFIX = 'gq360v2-';
+const VERSION = PREFIX + '1';
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css',
   'js/app.js', 'js/capture.js', 'js/config.js', 'js/db.js', 'js/i18n.js', 'js/jpeg-meta.js',
-  'js/math.js', 'js/pipeline.js', 'js/stitch.worker.js', 'js/targets.js', 'js/upload.js', 'js/viewer.js', 'js/sim.js',
+  'js/math.js', 'js/pipeline.js', 'js/upload-core.js', 'js/stitch.worker.js', 'js/targets.js', 'js/upload.js', 'js/viewer.js', 'js/sim.js',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png',
 ];
 
@@ -13,7 +16,7 @@ self.addEventListener('install', (e) => {
 });
 
 self.addEventListener('activate', (e) => {
-  e.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== VERSION).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
+  e.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((k) => k.startsWith(PREFIX) && k !== VERSION).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
 });
 
 self.addEventListener('fetch', (e) => {
@@ -27,4 +30,14 @@ self.addEventListener('fetch', (e) => {
       return res;
     }).catch(() => (req.mode === 'navigate' ? caches.match('index.html') : Response.error())))
   );
+});
+
+// Envoi en arrière-plan (Android / Chrome) : déclenché par le navigateur quand le réseau revient,
+// même si l'app est fermée. En cas d'échec, le navigateur réessaie plus tard.
+self.addEventListener('sync', (e) => {
+  if (e.tag !== 'gq-upload') return;
+  e.waitUntil(self.GQUploadCore.uploadAll({}).then(async (r) => {
+    const clients = await self.clients.matchAll();
+    clients.forEach((c) => c.postMessage({ type: 'uploaded', r }));
+  }));
 });

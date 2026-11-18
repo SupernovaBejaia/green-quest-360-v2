@@ -87,7 +87,8 @@ export class SimOrientation {
   constructor(el) {
     this.yaw = 0; this.pitch = 0; this.listeners = [];
     let drag = null;
-    el.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, y: e.clientY, yaw: this.yaw, pitch: this.pitch }; });
+    this._down = (e) => { drag = { x: e.clientX, y: e.clientY, yaw: this.yaw, pitch: this.pitch }; };
+    this.attach(el);
     window.addEventListener('pointerup', () => { drag = null; });
     window.addEventListener('pointermove', (e) => {
       if (!drag) return;
@@ -105,6 +106,8 @@ export class SimOrientation {
       this.emit();
     });
   }
+  // Rebranche la souris sur un nouvel écran (reprise ciblée)
+  attach(el) { if (this._el) this._el.removeEventListener('pointerdown', this._down); this._el = el; el.addEventListener('pointerdown', this._down); }
   set(yaw, pitch) { this.yaw = yaw; this.pitch = pitch; this.emit(); }
   trueRcw() { return camLookingAt(this.yaw, this.pitch); }
   emit() { for (const l of this.listeners) l(); }

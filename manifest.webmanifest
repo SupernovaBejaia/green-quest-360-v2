@@ -1,6 +1,7 @@
 {
-  "name": "Green Quest 360",
-  "short_name": "GQ 360",
+  "id": "./?app=gq360v2",
+  "name": "Green Quest 360 V2 (test)",
+  "short_name": "GQ 360 V2",
   "description": "Photos 360 hors ligne pour Green Quest.",
   "start_url": "./",
   "scope": "./",

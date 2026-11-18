@@ -48,6 +48,15 @@ const STR = {
     keepOpen: "Gardez l'application ouverte, cela prend environ une minute.",
     result: 'Votre photo 360',
     partial: "L'alignement automatique a été partiel : quelques raccords peuvent être visibles. Pour corriger : gardez le téléphone au même endroit en tournant, et éloignez-vous des objets proches. Vous pouvez recommencer.",
+    blurRetry: 'Photo floue, on la refait : ne bougez plus',
+    keepUpright: 'Gardez le téléphone droit',
+    retakeLeft: 'Reprise : {n} photo(s) restante(s)',
+    qcGood: 'Tout est bien raccordé.',
+    qcWeak: '{n} photo(s) mal raccordée(s)',
+    qcWeakHelp: "Reprenez seulement celles-là, sans refaire tout le tour. Restez au même endroit, et pensez à tourner autour du téléphone.",
+    qcRetake: 'Reprendre ces {n} photo(s)',
+    qcTooMany: 'Trop de zones à reprendre : mieux vaut recommencer en suivant les conseils.',
+    qcNoRetake: 'Vous pouvez enregistrer quand même, ou recommencer.',
     save: 'Enregistrer', redo: 'Recommencer',
     saved: 'Enregistrée sur le téléphone. Elle sera envoyée dès que vous aurez Internet.',
     location: 'Position', noLocation: 'Position GPS non disponible',
@@ -110,6 +119,15 @@ const STR = {
     keepOpen: 'أبقِ التطبيق مفتوحًا، يستغرق ذلك حوالي دقيقة.',
     result: 'صورتك 360',
     partial: 'كانت المحاذاة التلقائية جزئية: قد تظهر بعض الوصلات. للتحسين: أبقِ الهاتف في نفس المكان أثناء الدوران وابتعد عن الأشياء القريبة. يمكنك إعادة التصوير.',
+    blurRetry: 'الصورة ضبابية، نعيدها: لا تتحرك',
+    keepUpright: 'أبقِ الهاتف مستقيمًا',
+    retakeLeft: 'إعادة: {n} صورة متبقية',
+    qcGood: 'كل الصور متطابقة جيدًا.',
+    qcWeak: '{n} صورة غير متطابقة جيدًا',
+    qcWeakHelp: 'أعد تصوير هذه فقط، دون إعادة الدورة كاملة. ابقَ في نفس المكان، واستدر حول الهاتف.',
+    qcRetake: 'إعادة تصوير {n} صورة',
+    qcTooMany: 'مناطق كثيرة تحتاج إعادة: الأفضل إعادة التصوير مع اتباع النصائح.',
+    qcNoRetake: 'يمكنك الحفظ على أي حال، أو إعادة التصوير.',
     save: 'حفظ', redo: 'إعادة',
     saved: 'حُفظت على الهاتف. ستُرسل عند توفر الإنترنت.',
     location: 'الموقع', noLocation: 'موقع GPS غير متوفر',
@@ -126,7 +144,7 @@ const STR = {
 };
 
 let lang = (() => {
-  try { const s = localStorage.getItem('gq_lang'); if (s && STR[s]) return s; } catch {}
+  try { const s = localStorage.getItem('gq2_lang'); if (s && STR[s]) return s; } catch {}
   return (navigator.language || 'fr').startsWith('ar') ? 'ar' : 'fr';
 })();
 
@@ -140,7 +158,7 @@ export function getLang() { return lang; }
 
 export function setLang(l) {
   lang = STR[l] ? l : 'fr';
-  try { localStorage.setItem('gq_lang', lang); } catch {}
+  try { localStorage.setItem('gq2_lang', lang); } catch {}
   applyDir();
 }
 
