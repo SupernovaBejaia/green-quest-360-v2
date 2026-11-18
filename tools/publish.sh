@@ -18,5 +18,5 @@ if [ "$branch" = main ]; then
 else
   git push v2 v2:main
 fi
-git push "$remote" "$(git subtree split --prefix app "$branch")":gh-pages --force
+git push "$remote" "$(git subtree split --prefix app "$branch")":refs/heads/gh-pages --force
 echo "Publié : $url (1 à 2 minutes)"
