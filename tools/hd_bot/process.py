@@ -397,6 +397,9 @@ if __name__ == '__main__':
     if a.local:
         process_local(a.local, a.out, a.width)
     elif a.drive:
+        if not os.environ.get('GQ_BOT_URL') or not os.environ.get('GQ_BOT_KEY'):
+            print('Clé du robot non configurée (bash tools/setup-bot-key.sh) : rien à faire.')
+            sys.exit(0)
         process_drive(a.width)
     else:
         ap.print_help()
