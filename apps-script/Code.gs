@@ -16,8 +16,9 @@
  *         …_360_HD.jpg                   (version propre, faite automatiquement par le robot)
  *         meta.json, sources/
  *
- * Clé du robot (version propre automatique) : Paramètres du projet > Propriétés du script > BOT_KEY.
- * Elle n'est écrite nulle part dans le code public.
+ * Clé du robot (version propre automatique) : propriété du script BOT_KEY, posée une seule fois
+ * par l'action « bot_init » (refusée ensuite). Elle n'est écrite nulle part dans le code public ;
+ * pour la changer : Paramètres du projet > Propriétés du script.
  */
 
 const ROOT_FOLDER_ID = '1aT-aEzUjJ7kY0h8F_VtU7A-v7ZEpCfBk'; // Drive : Green Quest Cartographie
@@ -38,6 +39,14 @@ function doGet() {
 function doPost(e) {
   try {
     const body = JSON.parse(e.postData.contents);
+    if (body.action === 'bot_init') {
+      // Configuration unique de la clé du robot (refusée si elle existe déjà).
+      const props = PropertiesService.getScriptProperties();
+      if (props.getProperty('BOT_KEY')) return json_({ ok: false, error: 'Clé robot déjà configurée' });
+      if (!body.botKey || String(body.botKey).length < 32) return json_({ ok: false, error: 'Clé robot trop courte' });
+      props.setProperty('BOT_KEY', String(body.botKey));
+      return json_({ ok: true });
+    }
     if (String(body.action || '').indexOf('bot_') === 0) {
       const botKey = PropertiesService.getScriptProperties().getProperty('BOT_KEY');
       if (!botKey || body.key !== botKey) return json_({ ok: false, error: 'Clé robot invalide' });
