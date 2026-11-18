@@ -3,11 +3,13 @@
 // Les caches sont partagés avec la V1 (même domaine github.io) : on ne touche qu'aux caches V2.
 importScripts('js/upload-core.js');
 const PREFIX = 'gq360v2-';
-const VERSION = PREFIX + '1';
+const VERSION = PREFIX + '2';
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css',
   'js/app.js', 'js/capture.js', 'js/config.js', 'js/db.js', 'js/i18n.js', 'js/jpeg-meta.js',
   'js/math.js', 'js/pipeline.js', 'js/upload-core.js', 'js/stitch.worker.js', 'js/targets.js', 'js/upload.js', 'js/viewer.js', 'js/sim.js',
+  'fonts/archivo-latin.woff2', 'fonts/archivo-latin-ext.woff2',
+  'img/supernova.webp', 'img/comet.webp', 'img/greenquest.webp', 'img/gouraya.webp', 'img/provert.webp',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png',
 ];
 

@@ -57,12 +57,15 @@ function screenSetup() {
   app.innerHTML = `
     <div class="page center">
       ${langSwitch()}
-      <img class="logo" src="icons/icon-192.png" alt="">
+      <img class="welcome-logo" src="img/supernova.webp" alt="Supernova">
+      <span class="x">×</span>
+      <img class="gq-logo" src="img/greenquest.webp" alt="Green Quest">
       <h1>${t('welcome')}</h1>
       <p class="muted">${t('welcomeText')}</p>
       <label class="field"><span>${t('name')}</span><input id="pname" autocomplete="name" value="${esc(p.name)}"></label>
       <label class="field"><span>${t('team')}</span><input id="pteam" value="${esc(p.team)}"></label>
       <button class="btn primary big" id="go">${t('continue')}</button>
+      ${partnersFooter()}
     </div>`;
   bindLang();
   $('#go').onclick = () => {
@@ -71,6 +74,17 @@ function screenSetup() {
     setProfile({ name, team: $('#pteam').value.trim() });
     screenHome();
   };
+}
+
+function partnersFooter() {
+  return `<footer class="partners">
+    <div class="eyebrow">${t('partners')}</div>
+    <div class="row">
+      <img class="gq" src="img/greenquest.webp" alt="Green Quest">
+      <img src="img/gouraya.webp" alt="Parc National du Gouraya">
+      <img src="img/provert.webp" alt="EPIC Bougie Provert">
+    </div>
+  </footer>`;
 }
 
 function langSwitch() {
@@ -87,19 +101,29 @@ async function screenHome() {
   app.innerHTML = `
     <div class="page">
       <header class="top">
-        <div><div class="title">${t('appName')} <span class="v2tag">V2 test</span></div><div class="muted small">${esc(profile()?.name)}${profile()?.team ? ' · ' + esc(profile().team) : ''}</div></div>
+        <div class="brand">
+          <img src="img/supernova.webp" alt="Supernova">
+          <div class="eyebrow">Green Quest 360 <span class="v2tag">V2 test</span></div>
+        </div>
         <div class="row">
           <span class="net ${navigator.onLine ? 'on' : ''}">${navigator.onLine ? t('online') : t('offline')}</span>
           <button class="icon" id="settings" aria-label="${t('settings')}">⚙</button>
         </div>
       </header>
-      <button class="btn primary huge" id="new"><span class="ring360">360°</span>${t('newPhoto')}</button>
+      <div class="who">👤 ${esc(profile()?.name)}${profile()?.team ? ' · ' + esc(profile().team) : ''}</div>
+      <button class="hero" id="new">
+        <img src="img/comet.webp" alt="">
+        <span class="big360">360°</span>
+        <span class="label">${t('newPhoto')}</span>
+        <span class="sub">${t('heroSub')}</span>
+      </button>
       ${installHint()}
       <div class="section-head">
         <h2>${t('myPhotos')}</h2>
         ${pending && uploadConfigured() ? `<button class="btn small" id="sendall" ${navigator.onLine ? '' : 'disabled'}>${t('sendAll', { n: pending })}</button>` : ''}
       </div>
-      <div class="list" id="list">${caps.length ? '' : `<p class="muted">${t('none')}</p>`}</div>
+      <div class="list" id="list">${caps.length ? '' : `<p class="empty">${t('none')}</p>`}</div>
+      ${partnersFooter()}
     </div>`;
   const list = $('#list');
   for (const c of caps) {
@@ -167,11 +191,11 @@ const TIP_ICONS = ['🔄', '📱', '📏', '🎯', '🚶', '☀️', '📍', '�
 function pivotSvg() {
   return `<svg viewBox="0 0 220 110" width="220" height="110">
     <circle cx="110" cy="55" r="40" fill="none" stroke="currentColor" stroke-dasharray="4 5" opacity=".5"/>
-    <rect x="103" y="42" width="14" height="26" rx="3" fill="#2ecc71"/>
+    <rect x="103" y="42" width="14" height="26" rx="3" fill="#e8100c"/>
     <circle cx="110" cy="55" r="3" fill="#fff"/>
     <g fill="currentColor" opacity=".85"><ellipse cx="110" cy="100" rx="9" ry="5"/><ellipse cx="66" cy="78" rx="9" ry="5" transform="rotate(50 66 78)"/><ellipse cx="154" cy="78" rx="9" ry="5" transform="rotate(-50 154 78)"/></g>
-    <path d="M150 24 A48 48 0 0 1 160 62" fill="none" stroke="#2ecc71" stroke-width="3" marker-end="url(#a)"/>
-    <defs><marker id="a" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" fill="#2ecc71"/></marker></defs>
+    <path d="M150 24 A48 48 0 0 1 160 62" fill="none" stroke="#a9c25d" stroke-width="3" marker-end="url(#a)"/>
+    <defs><marker id="a" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" fill="#a9c25d"/></marker></defs>
   </svg>`;
 }
 

@@ -1,0 +1,3 @@
+Archivo — Copyright 2019 The Archivo Project Authors (https://github.com/Omnibus-Type/Archivo)
+Police distribuée sous licence SIL Open Font License 1.1 : https://openfontlicense.org
+Fichiers woff2 issus de Google Fonts, intégrés à l'app pour fonctionner hors ligne.
