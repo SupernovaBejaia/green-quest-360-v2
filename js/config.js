@@ -1,7 +1,7 @@
 // À REMPLIR par l'organisateur après avoir déployé le script Google (voir docs/INSTALLATION.md).
 export const CONFIG = {
   // URL du déploiement "Application Web" du script Google Apps Script (se termine par /exec)
-  uploadUrl: 'https://script.google.com/macros/s/AKfycby-iaVHNOyv6n_nDoXT23HWJXwQw-x7hKL4Otd2cVtPZ23jdeFnVFa-SEA5sRVK_ZFgrA/exec',
+  uploadUrl: 'https://script.google.com/macros/s/AKfycbxa-vXdnbuJg112McNNYq05Fl3bNiGvT15Hidmf6zFi257Bg0SrnbbJhdEXGzL88A302g/exec', // déploiement V2
   // Même clé que KEY dans apps-script/Code.gs (évite que n'importe qui dépose des fichiers)
   uploadKey: 'gq360-D4V6lQUFeiTDT4ffM7FVC2xi',
   // Largeur de la photo 360 assemblée sur le téléphone (hauteur = moitié). 4096 = bon compromis.
