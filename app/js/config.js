@@ -10,7 +10,7 @@ export const CONFIG = {
   sendSourcesDefault: true,
 };
 
-// Pour les tests en local uniquement : localStorage.gq_dev_upload = '{"uploadUrl":"…","uploadKey":"…"}'
+// Pour les tests en local uniquement : localStorage.gq2_dev_upload = '{"uploadUrl":"…","uploadKey":"…"}'
 if (['localhost', '127.0.0.1'].includes(location.hostname)) {
-  try { Object.assign(CONFIG, JSON.parse(localStorage.getItem('gq_dev_upload') || '{}')); } catch {}
+  try { Object.assign(CONFIG, JSON.parse(localStorage.getItem('gq2_dev_upload') || '{}')); } catch {}
 }

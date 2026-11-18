@@ -1,5 +1,5 @@
 // Stockage local (IndexedDB) : tout reste sur le téléphone tant que ce n'est pas envoyé.
-const DB_NAME = 'gq360', VERSION = 1;
+const DB_NAME = 'gq360v2', VERSION = 2; // distinct de la V1 (même domaine) ; même schéma que upload-core.js
 let dbp = null;
 
 function open() {
@@ -10,6 +10,7 @@ function open() {
       const db = req.result;
       if (!db.objectStoreNames.contains('captures')) db.createObjectStore('captures', { keyPath: 'id' });
       if (!db.objectStoreNames.contains('blobs')) db.createObjectStore('blobs');
+      if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings');
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);

@@ -129,3 +129,10 @@ body.fullscreen #app { position: fixed; inset: 0; }
 .cap-flash.on { animation: flash .35s ease-out; }
 @keyframes flash { from { opacity: .7; } to { opacity: 0; } }
 .cap-portrait { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(0,0,0,.85); font-size: 22px; font-weight: 700; text-align: center; padding: 24px; }
+
+/* ---------- V2 ---------- */
+.v2tag { font-size: 11px; font-weight: 800; background: #f5a623; color: #0f2a1d; padding: 2px 7px; border-radius: 99px; vertical-align: middle; }
+.qc { background: #3a2f12; border: 1.5px solid var(--warn); border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.qc-t { font-weight: 700; color: var(--warn); }
+.ok { color: var(--green); margin: 0; font-weight: 600; }
+.cap-hint.alert { color: #ffd166; }

@@ -441,6 +441,7 @@ function stitch({ images, focalNorm, outW, refine = true }) {
   images.forEach((im, i) => { im.feats = detectFeatures(L0[i]); });
 
   let R = R0, f = f0, stats = { pairs: 0, matches: 0, rms: null, aligned: 0, refined: false };
+  let perImage = null;
   if (refine && N > 1) {
     const fwd = R0.map(forwardOf);
     const pairList = [];
@@ -464,6 +465,12 @@ function stitch({ images, focalNorm, outW, refine = true }) {
       if (keep.length >= 8) res = optimize(N, R0, keep, f0, cx, cy);
       const errs = res.errs, rms = Math.sqrt(errs.reduce((s, e) => s + e * e, 0) / errs.length);
       const seen = new Set(); keep.forEach((m) => { seen.add(m.i); seen.add(m.j); });
+      // Qualité par photo : nombre de points communs avec les voisines et erreur moyenne de raccord.
+      const per = Array.from({ length: N }, () => ({ n: 0, err: 0 }));
+      keep.forEach((m, k) => {
+        for (const i of [m.i, m.j]) { per[i].n++; per[i].err += errs[k] || 0; }
+      });
+      perImage = per.map((p, i) => ({ n: p.n, err: p.n ? Math.round((p.err / p.n) * 100) / 100 : null, feats: images[i].feats.length }));
       const fRatio = res.f / f0;
       // Garde-fou : on n'accepte la correction que si elle est raisonnable.
       if (rms < 3 && fRatio > 0.75 && fRatio < 1.33) {
@@ -478,10 +485,11 @@ function stitch({ images, focalNorm, outW, refine = true }) {
   } else {
     var gains = new Array(N).fill(1);
   }
+  if (!perImage) perImage = images.map((im) => ({ n: 0, err: null, feats: im.feats.length }));
   const newFocalNorm = f / Math.max(mw, mh);
   const yaw0 = yawPitchOf(forwardOf(R[0])).yaw;
   progress('render', 0);
   const { rgba, holes } = render(images, R, newFocalNorm, gains, outW, yaw0);
   progress('render', 1);
-  return { rgba, w: outW, h: outW / 2, focalNorm: newFocalNorm, rotations: R, gains, stats: { ...stats, holes } };
+  return { rgba, w: outW, h: outW / 2, focalNorm: newFocalNorm, rotations: R, gains, perImage, stats: { ...stats, holes } };
 }

@@ -1,2 +1,5 @@
 test-output/
 node_modules/
+tools/hd_bot/.venv/
+__pycache__/
+app/test/_hard/

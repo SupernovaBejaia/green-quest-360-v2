@@ -40,7 +40,7 @@ http.createServer((req, res) => {
       if (b.key !== 'test-key') return send({ ok: false, error: 'Clé invalide' });
       mock.calls++;
       if (mock.failAt.has(mock.calls)) { res.writeHead(500); return res.end('boom'); }
-      const dir = path.join(outDir, 'drive', path.basename(b.folder || 'x'), path.basename(b.subfolder || ''));
+      const dir = path.join(outDir, 'drive', b.participant !== undefined ? path.basename(b.participant || 'Sans nom') : '', path.basename(b.folder || 'x'), path.basename(b.subfolder || ''));
       if (b.action === 'ping') return send({ ok: true });
       if (b.action === 'file') {
         fs.mkdirSync(dir, { recursive: true });

@@ -3,7 +3,7 @@ import { DEG, applyT, camToWorld, deviceFromEuler, deviceFromQuat, dirFromYawPit
 import { makeTargets } from './targets.js';
 import { t } from './i18n.js';
 
-const ALIGN_TOL = 4 * DEG, POLE_TOL = 7 * DEG, HOLD_MS = 650, MAX_SPEED = 7 * DEG; // rad/s
+const ALIGN_TOL = 4 * DEG, POLE_TOL = 7 * DEG, HOLD_MS = 650, MAX_SPEED = 7 * DEG, STILL_SPEED = 2.5 * DEG; // rad/s
 
 // ---------- Orientation ----------
 
@@ -106,6 +106,7 @@ class SimSource {
         canvasEl.getContext('2d').putImageData(this.preview, 0, 0);
       });
     };
+    this._draw = draw;
     orient.listeners.push(draw); draw();
     return true;
   }
@@ -114,9 +115,15 @@ class SimSource {
   grab() {
     const c = document.createElement('canvas'); c.width = this.w; c.height = this.h;
     c.getContext('2d').putImageData(this.sim.renderView(this.pano, this.orient.trueRcw(), this.w, this.h, this.fn * this.h), 0, 0);
+    if (window.__simBlur > 0) { // test : simuler une photo bougée
+      window.__simBlur--;
+      const b = document.createElement('canvas'); b.width = this.w; b.height = this.h;
+      const g = b.getContext('2d'); g.filter = 'blur(3px)'; g.drawImage(c, 0, 0);
+      return b;
+    }
     return c;
   }
-  stop() { cancelAnimationFrame(this._raf); }
+  stop() { cancelAnimationFrame(this._raf); const l = this.orient?.listeners; if (l && this._draw) l.splice(l.indexOf(this._draw) >>> 0, 1); }
 }
 
 class SimOrientationSource {
@@ -127,7 +134,7 @@ class SimOrientationSource {
   async start() { this._update(); return true; }
   _update() {
     // Dérive lente du cap + petit bruit, comme un vrai gyroscope
-    const drift = ((performance.now() - this.t0) / 1000) * 0.05 * DEG;
+    const drift = Math.min(2.5 * DEG, ((performance.now() - this.t0) / 1000) * 0.05 * DEG);
     this.R = mul(expMap([0.5 * DEG, -0.4 * DEG, drift]), this.o.trueRcw());
     this.stamp = performance.now();
     for (const l of this.listeners) l();
@@ -135,18 +142,77 @@ class SimOrientationSource {
   stop() {}
 }
 
+// ---------- Orientation partagée ----------
+// Le capteur reste allumé de la prise de vue jusqu'à l'enregistrement : ainsi, une reprise ciblée
+// juste après l'assemblage est mesurée dans le MÊME repère que les photos d'origine.
+let shared = null;
+
+async function acquireOrientation(simMod, overlay) {
+  if (shared && shared.sim === !!simMod) {
+    if (simMod) shared.simOrient.attach(overlay);
+    return shared;
+  }
+  releaseOrientation();
+  if (simMod) {
+    const so = new simMod.SimOrientation(overlay);
+    const orient = new SimOrientationSource(so);
+    await orient.start();
+    shared = { sim: true, simOrient: so, orient, session: Date.now() };
+  } else {
+    const orient = new DeviceOrientationSource();
+    if (!(await orient.start())) throw Object.assign(new Error(t('noMotion')), { userMessage: t('noMotion') });
+    shared = { sim: false, orient, session: Date.now() };
+  }
+  return shared;
+}
+
+export function releaseOrientation() { if (shared) { shared.orient.stop(); shared = null; } }
+export function orientationSession() { return shared ? shared.session : null; }
+
+function median(a) { const s = a.slice().sort((x, y) => x - y); return s[s.length >> 1]; }
+
+// ---------- Netteté ----------
+// Compare l'énergie des détails fins (laplacien pleine résolution) à celle des détails moyens
+// (laplacien à demi-résolution) au centre de l'image. Une photo bougée perd surtout les détails fins.
+export function sharpnessOf(canvas) {
+  const S = Math.min(512, canvas.width, canvas.height);
+  const x0 = Math.floor((canvas.width - S) / 2), y0 = Math.floor((canvas.height - S) / 2);
+  const d = canvas.getContext('2d', { willReadFrequently: true }).getImageData(x0, y0, S, S).data;
+  const g = new Float32Array(S * S);
+  for (let i = 0; i < g.length; i++) g[i] = d[4 * i] * 0.299 + d[4 * i + 1] * 0.587 + d[4 * i + 2] * 0.114;
+  const lap = (img, w) => {
+    let s = 0, n = 0;
+    for (let y = 1; y < w - 1; y++) for (let x = 1; x < w - 1; x++) {
+      const i = y * w + x;
+      s += Math.abs(4 * img[i] - img[i - 1] - img[i + 1] - img[i - w] - img[i + w]); n++;
+    }
+    return s / n;
+  };
+  const h = S >> 1, g2 = new Float32Array(h * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < h; x++) {
+    const i = 2 * y * S + 2 * x;
+    g2[y * h + x] = (g[i] + g[i + 1] + g[i + S] + g[i + S + 1]) / 4;
+  }
+  const fine = lap(g, S), coarse = lap(g2, h);
+  return { fine, coarse, ratio: coarse > 0 ? fine / coarse : 1 };
+}
+
 // ---------- Session de capture ----------
 
 export class CaptureScreen {
-  constructor(root, { sim = null, focalNorm, onFinish, onCancel, onError }) {
-    Object.assign(this, { root, simMod: sim, focalNorm, onFinish, onCancel, onError });
+  constructor(root, { sim = null, focalNorm, onFinish, onCancel, onError, retake = null }) {
+    Object.assign(this, { root, simMod: sim, focalNorm, onFinish, onCancel, onError, retake });
     this.targets = makeTargets();
     this.shots = [];
-    this.captured = new Set();
+    // Reprise ciblée : tout est déjà pris sauf les points à refaire.
+    this.captured = new Set(retake ? this.targets.map((_, i) => i).filter((i) => !retake.targets.includes(i)) : []);
     this.holdStart = 0; this.holdTarget = -1;
     this.speed = 0; this.lastFwd = null; this.lastT = 0;
     this.flash = 0;
     this.busy = false;
+    this.blurTries = new Map();
+    this.sharpRatios = [];
+    this.message = null;
   }
 
   async start() {
@@ -173,21 +239,19 @@ export class CaptureScreen {
     this.finishBtn.onclick = () => this.finish();
 
     try {
+      const sh = await acquireOrientation(this.simMod, this.overlay);
+      this.orient = sh.orient;
       if (this.simMod) {
-        const so = new this.simMod.SimOrientation(this.overlay);
-        window.__simOrient = so; window.__cap = this; // pilotage par les tests automatiques
-        this.orient = new SimOrientationSource(so);
+        window.__simOrient = sh.simOrient; window.__cap = this; // pilotage par les tests automatiques
         this.source = new SimSource();
-        await this.source.start(r.querySelector('.cap-video'), so, this.simMod);
-        await this.orient.start();
+        await this.source.start(r.querySelector('.cap-video'), sh.simOrient, this.simMod);
       } else {
-        this.orient = new DeviceOrientationSource();
         this.source = new CameraSource();
-        const [motionOk] = await Promise.all([this.orient.start(), this.source.start(r.querySelector('.cap-video'))]);
-        if (!motionOk) throw Object.assign(new Error(t('noMotion')), { userMessage: t('noMotion') });
+        await this.source.start(r.querySelector('.cap-video'));
       }
     } catch (e) {
       this.stop();
+      if (!this.retake) releaseOrientation();
       const msg = e.userMessage || (e.name === 'NotAllowedError' ? t('permDenied') : t('noCamera'));
       this.onError(msg);
       return;
@@ -195,7 +259,9 @@ export class CaptureScreen {
     try { this.wakeLock = await navigator.wakeLock?.request('screen'); } catch {}
     try { this.audio = new (window.AudioContext || window.webkitAudioContext)(); } catch {}
     // Le premier point est droit devant, à l'horizon, dans la direction où l'on regarde.
-    this.refYaw = yawPitchOf(forwardOf(this.orient.R)).yaw;
+    // En reprise, on garde le repère de la prise d'origine.
+    this.refYaw = this.retake ? this.retake.refYaw : yawPitchOf(forwardOf(this.orient.R)).yaw;
+    if (this.retake) this.finishBtn.disabled = false;
     this.dirs = this.targets.map((tg) => dirFromYawPitch(this.refYaw + tg.yaw, tg.pitch));
     this.running = true;
     const loop = () => { if (!this.running) return; this.tick(); this.raf = requestAnimationFrame(loop); };
@@ -256,21 +322,30 @@ export class CaptureScreen {
     const steady = this.speed < MAX_SPEED;
     if (aimed >= 0 && steady && portrait && !this.busy) {
       if (this.holdTarget !== aimed) { this.holdTarget = aimed; this.holdStart = now; }
-      if (now - this.holdStart > HOLD_MS) this.shoot(aimed);
+      // Au bout du maintien, on attend en plus l'immobilité quasi totale (anti-flou de bougé), 1 s au plus.
+      if (now - this.holdStart > HOLD_MS && (this.speed < STILL_SPEED || now - this.holdStart > HOLD_MS + 1000)) this.shoot(aimed);
     } else if (aimed < 0 || !steady) {
       this.holdTarget = -1;
     }
 
     const n = this.captured.size, total = this.targets.length;
-    this.countEl.textContent = `${n} / ${total}`;
+    if (this.retake) {
+      const left = this.retake.targets.filter((i) => !this.captured.has(i)).length;
+      this.countEl.textContent = t('retakeLeft', { n: left });
+    } else this.countEl.textContent = `${n} / ${total}`;
+    // Roulis : le côté droit de l'image doit rester horizontal (sauf quand on vise le ciel ou le sol).
+    const roll = Math.asin(Math.max(-1, Math.min(1, R[6]))), tilted = Math.abs(fwd[2]) < 0.94 && Math.abs(roll) > 20 * DEG;
     let hint;
-    if (this.holdTarget >= 0) hint = t('hold');
+    if (this.message && now < this.message.until) hint = this.message.text;
+    else if (tilted) hint = t('keepUpright');
+    else if (this.holdTarget >= 0) hint = t('hold');
     else if (aimed >= 0 && !steady) hint = t('moveSlow');
     else if (next >= 0 && this.targets[next].ring === 4) hint = t('nadirHint');
     else hint = t('aim');
     this.hintEl.textContent = hint;
-    this.finishBtn.disabled = !this.horizonDone();
-    this.finishBtn.textContent = this.requiredDone() ? t('finishNow') : t('finish');
+    this.hintEl.classList.toggle('alert', !!(this.message && now < this.message.until) || tilted);
+    this.finishBtn.disabled = !this.retake && !this.horizonDone();
+    this.finishBtn.textContent = !this.retake && this.requiredDone() ? t('finishNow') : t('finish');
     if (this.requiredDone() && this.captured.has(this.targets.length - 1)) { this.finish(); return; }
 
     this.draw(R, next, now);
@@ -345,9 +420,26 @@ export class CaptureScreen {
     this.busy = true;
     const R = this.orient.R.slice();
     const canvas = this.source.grab();
-    this.captured.add(i);
     this.holdTarget = -1;
-    const shot = { target: i, R, w: canvas.width, h: canvas.height, blob: null, t: Date.now() };
+    // Contrôle qualité immédiat : une photo floue est refusée et refaite tout de suite (2 essais max).
+    const sh = sharpnessOf(canvas);
+    const textured = sh.coarse > 2.5;
+    // Référence = netteté médiane des photos déjà prises sur le même anneau (le ciel et l'horizon diffèrent).
+    const ring = this.targets[i].ring, same = this.sharpRatios.filter((x) => x.ring === ring).map((x) => x.r);
+    const ref = same.length >= 3 ? median(same) : null;
+    const blurry = textured && (sh.ratio < 0.2 || (ref && sh.ratio < 0.78 * ref));
+    const tries = this.blurTries.get(i) || 0;
+    if (blurry && tries < 2) {
+      this.blurTries.set(i, tries + 1);
+      this.message = { text: t('blurRetry'), until: performance.now() + 1800 };
+      try { navigator.vibrate?.([60, 80, 60]); } catch {}
+      this.holdStart = performance.now() + 400; // laisser le temps de se stabiliser
+      this.busy = false;
+      return;
+    }
+    if (textured && !blurry) this.sharpRatios.push({ ring, r: sh.ratio });
+    this.captured.add(i);
+    const shot = { target: i, R, w: canvas.width, h: canvas.height, blob: null, t: Date.now(), sharp: Math.round(sh.ratio * 1000) / 1000, blurry: !!blurry };
     this.shots.push(shot);
     this.flashEl.classList.remove('on'); void this.flashEl.offsetWidth; this.flashEl.classList.add('on');
     try { navigator.vibrate?.(40); } catch {}
@@ -374,14 +466,15 @@ export class CaptureScreen {
     for (let k = 0; k < 100 && this.shots.some((s) => !s.blob); k++) await new Promise((r) => setTimeout(r, 30));
     const shots = this.shots.filter((s) => s.blob);
     this.stop();
-    this.onFinish({ shots, targets: this.targets, refYaw: this.refYaw, sim: !!this.simMod });
+    this.onFinish({ shots, targets: this.targets, refYaw: this.refYaw, sim: !!this.simMod, retake: !!this.retake, session: orientationSession() });
   }
 
+  // Arrête la caméra ; le capteur d'orientation reste allumé (voir releaseOrientation).
   stop() {
     this.running = false;
     cancelAnimationFrame(this.raf);
     clearInterval(this.watchdog);
-    this.source?.stop(); this.orient?.stop();
+    this.source?.stop();
     try { this.wakeLock?.release(); } catch {}
     try { this.audio?.close(); } catch {}
   }
