@@ -376,7 +376,7 @@ export class CaptureScreen {
       const done = this.captured.has(i);
       g.beginPath();
       if (done) {
-        g.fillStyle = 'rgba(46, 204, 113, 0.9)';
+        g.fillStyle = 'rgba(169, 194, 93, 0.95)'; // vert Green Quest
         g.arc(p[0], p[1], 9, 0, 7); g.fill();
       } else if (i === next) {
         const pulse = 18 + 3 * Math.sin(now / 180);
@@ -394,7 +394,7 @@ export class CaptureScreen {
     g.beginPath(); g.arc(cx, cy, 30, 0, 7); g.stroke();
     if (this.holdTarget >= 0) {
       const p = Math.min(1, (now - this.holdStart) / HOLD_MS);
-      g.lineWidth = 7; g.strokeStyle = '#2ecc71';
+      g.lineWidth = 7; g.strokeStyle = '#ff3b1f'; // rouge Supernova
       g.beginPath(); g.arc(cx, cy, 30, -Math.PI / 2, -Math.PI / 2 + p * 2 * Math.PI); g.stroke();
     }
 
